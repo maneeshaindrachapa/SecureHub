@@ -15,7 +15,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import com.cloudpiercer.SecureHub.filter.JwtAuthFilter;
 
 @Configuration
-@EnableMethodSecurity
+@EnableMethodSecurity // enable @PreAuthorize / method-level authorization
 public class SecurityConfig {
 
     @Bean
@@ -25,24 +25,28 @@ public class SecurityConfig {
             @Qualifier("corsConfigurationSource") CorsConfigurationSource cors) throws Exception {
 
         return http
-                // Stateless API → no sessions, no login page
+                // Stateless API: disable CSRF and sessions (no login form, no server state)
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers(PathRequest.toH2Console()) // let H2 console work
+                        // Permit H2 console by ignoring CSRF there (console uses frames + POST forms)
+                        .ignoringRequestMatchers(PathRequest.toH2Console())
                         .disable())
+                // CORS is centralized via CorsConfigurationSource bean
                 .cors(c -> c.configurationSource(cors))
+                // No HttpSession: JWT carries identity
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Route-level authorization rules
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PathRequest.toH2Console()).permitAll()
                         .requestMatchers("/public/**", "/auth/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
-                .headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 console frames
+                        .anyRequest().authenticated())
+                // Allow same-origin frames for H2 console
+                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
+                // Consistent 401/403 JSON-less responses (status codes only)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) -> res.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
-                        .accessDeniedHandler((req, res, e) -> res.setStatus(HttpServletResponse.SC_FORBIDDEN))
-                )
-                // Plug in JWT filter before username/password filter
+                        .accessDeniedHandler((req, res, e) -> res.setStatus(HttpServletResponse.SC_FORBIDDEN)))
+                // Validate JWT before UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

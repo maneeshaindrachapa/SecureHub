@@ -11,7 +11,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Configuration class for authentication management.
+ * Authentication plumbing for form-less (API) login:
+ * - Exposes a BCrypt PasswordEncoder
+ * - Configures a DaoAuthenticationProvider using the app's UserDetailsService
+ * - Publishes an AuthenticationManager consumed by the /auth/login endpoint
  */
 @Configuration
 public class AuthManagerConfig {
@@ -23,6 +26,7 @@ public class AuthManagerConfig {
 
     @Bean
     public AuthenticationProvider daoAuthProvider(UserDetailsService uds, PasswordEncoder enc) {
+        // Provider that verifies username/password against UserDetailsService
         DaoAuthenticationProvider p = new DaoAuthenticationProvider();
         p.setUserDetailsService(uds);
         p.setPasswordEncoder(enc);
@@ -31,6 +35,7 @@ public class AuthManagerConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationProvider provider) {
+        // Simple manager with a single provider; used by AuthController
         return new ProviderManager(provider);
     }
 }

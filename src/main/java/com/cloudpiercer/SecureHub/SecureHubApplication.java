@@ -15,7 +15,7 @@ public class SecureHubApplication {
 		SpringApplication.run(SecureHubApplication.class, args);
 	}
 
-	// Seed an initial admin user for testing
+	// Seed an initial admin and user for testing
 	@Bean
 	CommandLineRunner seedUsers(AppUserRepository repo, PasswordEncoder enc) {
 		return args -> {
@@ -26,6 +26,14 @@ public class SecureHubApplication {
 				admin.setRole("ADMIN");
 				admin.setActive(true);
 				repo.save(admin);
+			}
+			if (repo.findByUsername("user").isEmpty()) {
+				AppUser user = new AppUser();
+				user.setUsername("user");
+				user.setPasswordHash(enc.encode("password123"));
+				user.setRole("USER");
+				user.setActive(true);
+				repo.save(user);
 			}
 		};
 	}
